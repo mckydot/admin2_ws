@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>강의실 수정</title>
+</head>
+<body>
+  <h2>강의실 수정</h2>
+  <form id="editForm">
+    <label>이름: <input type="text" id="roomName" /></label><br>
+    <label>설명: <textarea id="roomDesc"></textarea></label><br>
+    <button type="submit">수정 완료</button>
+  </form>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    const supabaseClient = createClient('https://bawmwecykdaqsjklyjhb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhd213ZWN5a2RhcXNqa2x5amhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5NjgxNzQsImV4cCI6MjA3NzU0NDE3NH0.KtTxYldOR_VCjUvI5BiAGBENkqHFRmApWM67PdKbGYQ');
+
+    // URL에서 id 추출
+    const params = new URLSearchParams(window.location.search);
+    const roomId = params.get('id');
+
+    async function loadRoom() {
+      const { data, error } = await supabaseClient
+        .from('classrooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+      if (error) {
+        alert('데이터를 불러오지 못했습니다.');
+        console.error(error);
+        return;
+      }
+
+      document.getElementById('roomName').value = data.name;
+      document.getElementById('roomDesc').value = data.description || '';
+    }
+
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newName = document.getElementById('roomName').value.trim();
+      const newDesc = document.getElementById('roomDesc').value.trim();
+
+      const { error } = await supabaseClient
+        .from('classrooms')
+        .update({ name: newName, description: newDesc })
+        .eq('id', roomId);
+
+      if (error) {
+        alert('수정 실패!');
+        console.error(error);
+      } else {
+        alert('수정 완료!');
+        window.location.href = '/list.html'; // 수정 후 목록으로 이동
+      }
+    });
+
+    loadRoom();
+  </script>
+</body>
+</html>

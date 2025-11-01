@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>회원가입</title>
+<style>
+  /* 디자인만 참고: 베이스 리셋 & 톤 */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+    background: #f8f9fa;
+    color: #1a1a1a;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+
+  /* 카드형 폼 */
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: #ffffff;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.06);
+  }
+
+  .title {
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: #718096;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .row { margin-bottom: 14px; }
+  .label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    color: #2d3748;
+    font-weight: 600;
+  }
+
+  /* 입력·셀렉트·버튼 크기/여백 일치 */
+  .input, .select, .button {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+
+  .input, .select {
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #2d3748;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .input:focus, .select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+  }
+
+  /* 그라디언트 CTA 버튼 */
+  .button {
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102,126,234,0.4);
+  }
+  .button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .help { font-size: 12px; color: #a0aec0; margin-top: 4px; }
+  
+  /* 에러 메시지 */
+  .error {
+    font-size: 12px;
+    color: #e53e3e;
+    margin-top: 4px;
+    display: none;
+  }
+  .error.show {
+    display: block;
+  }
+
+  /* 로딩 스피너 */
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 8px;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1 class="title">회원가입</h1>
+    <p class="subtitle">학생/관리자 계정을 생성합니다.</p>
+
+    <form id="signupForm" novalidate>
+      <div class="row">
+        <label for="role" class="label">회원 유형</label>
+        <select id="role" class="select" required>
+          <option value="">--선택--</option>
+          <option value="student">학생 (Student)</option>
+          <option value="admin">관리자 (Admin)</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="email" class="label">이메일</label>
+        <input type="email" id="email" class="input" placeholder="example@email.com" required />
+        <div class="error" id="emailError">올바른 이메일을 입력하세요.</div>
+      </div>
+
+      <div class="row">
+        <label for="id" class="label">사용자 이름</label>
+        <input type="text" id="id" class="input" placeholder="사용자 이름 입력" required />
+      </div>
+
+      <div class="row">
+        <label for="pw" class="label">비밀번호</label>
+        <input type="password" id="pw" class="input" placeholder="비밀번호 입력 (최소 6자)" required />
+        <div class="help">비밀번호는 최소 6자 이상이어야 합니다.</div>
+      </div>
+
+      <div class="row">
+        <label for="pw2" class="label">비밀번호 확인</label>
+        <input type="password" id="pw2" class="input" placeholder="비밀번호 재입력" required />
+        <div class="help">비밀번호가 일치해야 가입이 가능합니다.</div>
+        <div class="error" id="pwError">비밀번호가 일치하지 않습니다.</div>
+      </div>
+
+      <div class="row">
+        <button type="submit" class="button" id="submitBtn">회원가입</button>
+      </div>
+    </form>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        // Supabase 설정
+        const SUPABASE_URL = 'https://bawmwecykdaqsjklyjhb.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhd213ZWN5a2RhcXNqa2x5amhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5NjgxNzQsImV4cCI6MjA3NzU0NDE3NH0.KtTxYldOR_VCjUvI5BiAGBENkqHFRmApWM67PdKbGYQ';
+   
+    // Supabase 클라이언트 초기화
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const form = document.getElementById("signupForm");
+    const submitBtn = document.getElementById("submitBtn");
+    const emailError = document.getElementById("emailError");
+    const pwError = document.getElementById("pwError");
+
+    // 비밀번호 일치 확인
+    document.getElementById("pw2").addEventListener("input", function() {
+      const pw = document.getElementById("pw").value;
+      const pw2 = this.value;
+      
+      if (pw2 && pw !== pw2) {
+        pwError.classList.add("show");
+      } else {
+        pwError.classList.remove("show");
+      }
+    });
+
+    form.addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      const role = document.getElementById("role").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const username = document.getElementById("id").value.trim();
+      const pw = document.getElementById("pw").value;
+      const pw2 = document.getElementById("pw2").value;
+
+      // 유효성 검사
+      if (!role) {
+        alert("회원 유형을 선택하세요.");
+        return;
+      }
+      if (!email || !username || !pw || !pw2) {
+        alert("모든 항목을 입력해주세요.");
+        return;
+      }
+      if (pw.length < 6) {
+        alert("비밀번호는 최소 6자 이상이어야 합니다.");
+        return;
+      }
+      if (pw !== pw2) {
+        alert("비밀번호가 일치하지 않습니다.");
+        return;
+      }
+
+      // 로딩 시작
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner"></span>가입 중...';
+
+      try {
+        // 1. Supabase Auth로 회원가입
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: email,
+          password: pw,
+          options: {
+            data: {
+              username: username,
+              role: role
+            }
+          }
+        });
+
+        if (authError) throw authError;
+
+        // 2. profiles 테이블에 사용자 정보 저장
+        if (authData.user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: authData.user.id,
+                username: username,
+                role: role,
+                email: email
+              }
+            ]);
+
+          if (profileError) {
+            console.error('프로필 저장 오류:', profileError);
+            // 프로필 저장 실패 시에도 회원가입은 완료되었으므로 경고만 표시
+            alert(`회원가입은 완료되었으나 프로필 저장 중 오류가 발생했습니다.\n관리자에게 문의해주세요.`);
+            return;
+          }
+        }
+
+        // 회원가입 성공
+        alert(`${role === "student" ? "학생" : "관리자"} 회원가입이 완료되었습니다!\n\n이메일을 확인하여 인증을 완료해주세요.`);
+        
+        // 폼 초기화
+        form.reset();
+        
+        // 로그인 페이지로 이동 (선택사항)
+         window.location.href = 'index.html';
+
+      } catch (error) {
+        console.error('회원가입 오류:', error);
+        
+        // 오류 메시지 처리
+        let errorMessage = '회원가입 중 오류가 발생했습니다.';
+        
+        if (error.message.includes('already registered')) {
+          errorMessage = '이미 등록된 이메일입니다.';
+        } else if (error.message.includes('invalid email')) {
+          errorMessage = '올바른 이메일 형식이 아닙니다.';
+        } else if (error.message.includes('weak password')) {
+          errorMessage = '비밀번호가 너무 약합니다. 더 강한 비밀번호를 사용해주세요.';
+        }
+        
+        alert(errorMessage);
+      } finally {
+        // 로딩 종료
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '회원가입';
+      }
+    });
+  </script>
+</body>
+</html>

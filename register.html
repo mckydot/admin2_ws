@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>강의실 예약하기 - CNU 강의실 예약</title>
+  <style>
+    /* ===== 네비게이션 (사용자 제공) ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI','Noto Sans KR', sans-serif; background:#f8f9fa; color:#1a1a1a; }
+    .navbar { background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.06); position:sticky; top:0; z-index:10; }
+    .navbar-container { max-width:1200px; margin:0 auto; padding:0 24px; display:flex; justify-content:space-between; align-items:center; height:70px; }
+    .logo { display:flex; align-items:center; gap:12px; text-decoration:none; color:#1a1a1a; font-weight:700; }
+    .logo-icon { width:36px; height:36px; border-radius:8px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); }
+    .nav-menu { list-style:none; display:flex; gap:8px; }
+    .nav-link { display:flex; align-items:center; gap:8px; text-decoration:none; color:#4a5568; padding:10px 16px; border-radius:8px; }
+    .nav-link.active, .nav-link:hover { background:#eef2ff; color:#667eea; }
+    .nav-item.has-submenu{ position:relative; }
+    .nav-submenu{
+      position:absolute; top: calc(100% + 8px); left:0;
+      background:#fff; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.12);
+      min-width:200px; padding:8px; list-style:none;
+      opacity:0; visibility:hidden; transform:translateY(-6px); transition:all .25s; z-index:1000;
+    }
+    .nav-item.has-submenu:hover .nav-submenu,
+    .nav-item.has-submenu:focus-within .nav-submenu { opacity:1; visibility:visible; transform:translateY(0); }
+    .nav-submenu a{ display:block; padding:10px 12px; border-radius:8px; text-decoration:none; color:#4a5568; font-size:14px; }
+    .nav-submenu a:hover{ background:#f7fafc; color:#667eea; }
+
+    .profile-container{ position:relative; }
+    .profile-button{ display:flex; align-items:center; gap:8px; background:#f7fafc; border:1px solid #e2e8f0; border-radius:30px; padding:6px 10px; cursor:pointer; }
+    .profile-avatar{ width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; display:grid; place-items:center; font-weight:800; }
+    .dropdown-menu{ position:absolute; right:0; top:calc(100% + 8px); background:#fff; border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.12); display:none; min-width:200px; }
+    .dropdown-menu.active{ display:block; }
+    .dropdown-header{ padding:12px; border-bottom:1px solid #e2e8f0; }
+    .dropdown-item{ display:block; width:100%; text-align:left; padding:10px 12px; background:none; border:none; cursor:pointer; }
+    .dropdown-item.logout{ color:#e53e3e; border-top:1px solid #e2e8f0; }
+
+    /* ===== 페이지(예약) 공통 ===== */
+    .container{ max-width:1100px; margin:24px auto; padding:0 20px }
+    .card{ background:#fff; border:1px solid #edf2f7; border-radius:16px; box-shadow:0 6px 24px rgba(0,0,0,.06); padding:20px }
+    .title{ font-size:24px; font-weight:800; margin-bottom:6px }
+    .sub{ color:#718096; margin-bottom:18px }
+
+    .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px }
+    .room{ border:2px solid transparent; border-radius:14px; padding:16px; background:#fff; transition:.2s; cursor:pointer }
+    .room:hover{ transform:translateY(-2px); box-shadow:0 10px 22px rgba(0,0,0,.08); border-color:#667eea }
+    .room.selected{ border-color:#667eea; background:linear-gradient(135deg,rgba(102,126,234,.06),rgba(118,75,162,.06)) }
+    .room-name{ font-weight:800; font-size:18px }
+    .room-loc{ color:#718096; margin-top:4px }
+    .badge{ display:inline-flex; align-items:center; gap:6px; margin-top:10px; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:700 }
+    .fac{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px }
+    .tag{ font-size:12px; padding:4px 8px; border-radius:8px; background:#eef2ff; color:#4c51bf; border:1px solid #c3d1ff }
+
+    .section{ margin-top:20px }
+    .label{ font-size:14px; color:#4a5568; margin-bottom:8px; font-weight:600 }
+    .select,.input,.textarea{ width:100%; padding:12px 14px; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; background:#fff }
+    .select:focus,.input:focus,.textarea:focus{ outline:none; border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.12) }
+    .textarea{ min-height:96px; resize:vertical }
+
+    .slots{ display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px }
+    .slot{ border:2px solid #e2e8f0; border-radius:10px; padding:14px; text-align:center; cursor:pointer; background:#fff }
+    .slot:hover:not(.reserved){ border-color:#667eea; background:#f7fafc }
+    .slot.selected{ background:#667eea; color:#fff; border-color:#667eea }
+    .slot.reserved{ background:#fed7d7; border-color:#fc8181; color:#742a2a; cursor:not-allowed; opacity:.8 }
+    .slot small{ display:block; margin-top:4px; opacity:.85 }
+
+    /* 지난 시간대(오늘 기준) & 과거 날짜 비활성 */
+    .slot.disabled{
+      background:#f7fafc;
+      border-color:#e2e8f0;
+      color:#a0aec0;
+      cursor:not-allowed;
+      opacity:.6;
+    }
+
+    .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
+    @media(max-width:720px){ .row{ grid-template-columns:1fr } }
+    .actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:16px }
+    .btn{ border:none; border-radius:10px; padding:12px 20px; font-weight:800; cursor:pointer }
+    .btn-outline{ background:#fff; color:#667eea; border:2px solid #667eea }
+    .btn-primary{ background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; box-shadow:0 6px 18px rgba(102,126,234,.35) }
+    .alert{ display:none; margin-bottom:14px; padding:12px 14px; border-radius:10px }
+    .alert.show{ display:block }
+    .alert.info{ background:#bee3f8; color:#2c5282; border-left:4px solid #3182ce }
+    .alert.success{ background:#c6f6d5; color:#22543d; border-left:4px solid #38a169 }
+    .alert.error{ background:#fed7d7; color:#742a2a; border-left:4px solid #e53e3e }
+
+    .dim{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:50 }
+    .dim.show{ display:flex }
+    .spinner{ width:46px; height:46px; border:4px solid #e2e8f0; border-top-color:#667eea; border-radius:50%; animation:spin .8s linear infinite }
+    @keyframes spin{ to{ transform:rotate(360deg) } }
+  </style>
+</head>
+<body>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- 네비게이션 바 -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">C</div><span>CNU 강의실 예약</span>
+      </a>
+      <ul class="nav-menu">
+        <li class="nav-item"><a href="mainStudent.html" class="nav-link">홈</a></li>
+        <li class="nav-item has-submenu">
+          <a href="reservation.html" class="nav-link active" aria-haspopup="true" aria-expanded="false">강의실 예약</a>
+          <ul class="nav-submenu" aria-label="강의실 예약 메뉴">
+            <li><a href="reservation.html" id="reserve-create" class="active">예약하기</a></li>
+            <li><a href="reserve-list.html" id="reserve-list">조회 및 취소</a></li>
+          </ul>
+        </li>
+        <li class="nav-item"><a href="empty-rooms.html" class="nav-link" id="empty-rooms">빈 강의실 조회</a></li>
+      </ul>
+
+      <div class="profile-container">
+        <button class="profile-button" id="profileButton">
+          <div class="profile-avatar" id="profileAvatar">홍</div><span class="profile-name" id="profileName">홍길동</span>
+          <svg class="dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        <div class="dropdown-menu" id="dropdownMenu">
+          <div class="dropdown-header">
+            <div class="dropdown-user-name" id="dropdownUserName">홍길동</div>
+            <div class="dropdown-user-email" id="dropdownUserEmail">hong@example.com</div>
+          </div>
+          <button class="dropdown-item" onclick="alert('내 정보 페이지로 이동')">내 정보</button>
+          <button class="dropdown-item" onclick="alert('설정 페이지로 이동')">설정</button>
+          <button class="dropdown-item logout" id="logoutButton" onclick="handleLogout()">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 본문(예약 페이지) -->
+  <div class="container">
+    <div class="card">
+      <div class="title">강의실 예약하기</div>
+      <div class="sub">강의실을 선택하고 날짜/시간을 골라 예약하세요.</div>
+
+      <!-- 강의실 목록 -->
+      <div class="grid" id="roomsGrid"></div>
+
+      <!-- 예약 폼 -->
+      <div class="section">
+        <div id="alert" class="alert"></div>
+
+        <div class="row">
+          <div>
+            <div class="label">강의실</div>
+            <select id="roomSelect" class="select">
+              <option value="">강의실을 선택하세요</option>
+            </select>
+          </div>
+          <div>
+            <div class="label">날짜</div>
+            <input id="dateInput" type="date" class="input" />
+          </div>
+        </div>
+
+        <div class="section" id="slotsWrap" style="display:none;">
+          <div class="label" style="margin-bottom:10px;">시간 선택 (09:00 ~ 18:00)</div>
+          <div id="slots" class="slots"></div>
+        </div>
+
+        <div class="section">
+          <div class="label">사용 목적 (선택)</div>
+          <textarea id="purpose" class="textarea" placeholder="예: 프로젝트 회의, 스터디 모임 등"></textarea>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-outline" id="resetBtn">초기화</button>
+          <button class="btn btn-primary" id="submitBtn">예약하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로딩 -->
+  <div id="loading" class="dim"><div class="spinner"></div></div>
+
+  <script>
+    // ===== Supabase 설정 =====
+    const SUPABASE_URL = 'https://bawmwecykdaqsjklyjhb.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhd213ZWN5a2RhcXNqa2x5amhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5NjgxNzQsImV4cCI6MjA3NzU0NDE3NH0.KtTxYldOR_VCjUvI5BiAGBENkqHFRmApWM67PdKbGYQ';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ===== 상태 =====
+    let currentUser = null;
+    let classrooms = [];
+    let selectedRoomId = null;
+    let selectedSlots = []; // [{start:'09:00:00', end:'10:00:00'}, ...]
+
+    // ===== 유틸 =====
+    const $ = (id)=> document.getElementById(id);
+    const show = (el, v)=> el.style.display = v ? '' : 'none';
+    // 로컬 기준 오늘 YYYY-MM-DD
+    function todayLocalYMD(){
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const dd= String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${dd}`;
+    }
+    // 날짜 비교: a<b -> -1, a=b -> 0, a>b -> 1  (YYYY-MM-DD 문자열은 사전식 비교 가능)
+    function cmpYMD(a,b){ return a===b?0:(a<b?-1:1); }
+    // "HH:MM:SS" -> 초
+    function hmsToSeconds(hms){
+      const [h,m,s] = hms.split(':').map(Number);
+      return h*3600 + m*60 + (s||0);
+    }
+
+    const alertBox = $('alert');
+    function notify(msg, type='info'){
+      alertBox.textContent = msg;
+      alertBox.className = `alert ${type} show`;
+      setTimeout(()=> alertBox.className = 'alert', 4000);
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+    const loading = $('loading');
+    const spin = (v)=> loading.classList.toggle('show', !!v);
+
+    // 연속성 체크/병합
+    function isConsecutive(slots){
+      if(slots.length <= 1) return true;
+      for(let i=0;i<slots.length-1;i++){
+        if(slots[i].end !== slots[i+1].start) return false;
+      }
+      return true;
+    }
+    function mergeBlocks(slots){
+      if(!slots.length) return [];
+      const out = [];
+      let cur = {start: slots[0].start, end: slots[0].end};
+      for(let i=1;i<slots.length;i++){
+        if(cur.end === slots[i].start){ cur.end = slots[i].end; }
+        else { out.push(cur); cur = {start: slots[i].start, end: slots[i].end}; }
+      }
+      out.push(cur);
+      return out;
+    }
+
+    // ===== 초기화 =====
+    document.addEventListener('DOMContentLoaded', init);
+
+    async function init(){
+      try{
+        spin(true);
+
+        // 프로필 드롭다운
+        const profileButton = $('profileButton');
+        const dropdownMenu  = $('dropdownMenu');
+        if (profileButton && dropdownMenu) {
+          profileButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('active');
+            profileButton.classList.toggle('active');
+          });
+          document.addEventListener('click', (e) => {
+            if (!profileButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+              dropdownMenu.classList.remove('active');
+              profileButton.classList.remove('active');
+            }
+          });
+        }
+
+        // 로그인 유저 확인
+        const { data: { user } } = await supabase.auth.getUser();
+        if(!user){ location.href = 'index.html'; return; }
+        currentUser = user;
+
+        // 프로필 표시
+        try {
+          const email = user.email || '';
+          const username = user.user_metadata?.username || email.split('@')[0] || '사용자';
+          $('profileAvatar').textContent = username.charAt(0).toUpperCase();
+          $('profileName').textContent = username;
+          $('dropdownUserName').textContent = username;
+          $('dropdownUserEmail').textContent = email;
+        } catch {}
+
+        // 강의실 로드
+        const { data, error } = await supabase
+          .from('classrooms')
+          .select('*')
+          .eq('is_active', true)
+          .order('building', { ascending: true })
+          .order('name', { ascending: true });
+
+        if(error) throw error;
+        classrooms = data || [];
+
+        renderRoomsGrid();
+        populateRoomSelect();
+
+        // 날짜 min (로컬 오늘)
+        const dateInput = $('dateInput');
+        const today = todayLocalYMD();
+        dateInput.min = today;
+        if(!dateInput.value || cmpYMD(dateInput.value, today) < 0){
+          dateInput.value = today;
+        }
+        // 과거 날짜 수동 입력 방지 (타이핑 포함)
+        dateInput.addEventListener('input', () => {
+          const t = todayLocalYMD();
+          if (dateInput.value && cmpYMD(dateInput.value, t) < 0) {
+            dateInput.value = t;
+            notify('과거 날짜는 선택할 수 없습니다.', 'error');
+          }
+          tryBuildSlots();
+        });
+
+        // 이벤트
+        $('roomSelect').addEventListener('change', onRoomSelectChange);
+        dateInput.addEventListener('change', tryBuildSlots);
+        $('resetBtn').addEventListener('click', resetForm);
+        $('submitBtn').addEventListener('click', submitReservation);
+      }catch(e){
+        console.error(e);
+        notify('초기화 중 오류가 발생했습니다.', 'error');
+      }finally{
+        spin(false);
+      }
+    }
+
+    // ===== 강의실 렌더링 =====
+    function renderRoomsGrid(){
+      const wrap = $('roomsGrid');
+      if(!classrooms.length){
+        wrap.innerHTML = '<div class="sub" style="grid-column:1/-1;">등록된 강의실이 없습니다.</div>';
+        return;
+      }
+      wrap.innerHTML = classrooms.map(c=>{
+        const facs = (c.facilities || []).map(f=>`<span class="tag">✓ ${f}</span>`).join('');
+        return `
+          <div class="room" data-id="${c.id}">
+            <div class="room-name">${c.name}</div>
+            <div class="room-loc">${c.building}</div>
+            <div class="badge">${c.capacity}명 수용</div>
+            <div class="fac">${facs || '<span class="sub">시설 정보 없음</span>'}</div>
+          </div>
+        `;
+      }).join('');
+
+      // 카드 클릭 → 선택
+      wrap.querySelectorAll('.room').forEach(card=>{
+        card.addEventListener('click', ()=>{
+          const id = card.dataset.id;
+          selectRoom(id);
+          $('dateInput').scrollIntoView({behavior:'smooth', block:'center'});
+        });
+      });
+    }
+
+    function populateRoomSelect(){
+      const sel = $('roomSelect');
+      sel.innerHTML = '<option value="">강의실을 선택하세요</option>' +
+        classrooms.map(c=> `<option value="${c.id}">${c.building} ${c.name} · ${c.capacity}명</option>`).join('');
+    }
+
+    function selectRoom(id){
+      document.querySelectorAll('.room.selected').forEach(el=> el.classList.remove('selected'));
+      document.querySelector(`.room[data-id="${id}"]`)?.classList.add('selected');
+      $('roomSelect').value = id;
+      selectedRoomId = id;
+      tryBuildSlots();
+    }
+
+    function onRoomSelectChange(e){
+      const id = e.target.value || null;
+      selectedRoomId = id;
+      document.querySelectorAll('.room.selected').forEach(el=> el.classList.remove('selected'));
+      if(id) document.querySelector(`.room[data-id="${id}"]`)?.classList.add('selected');
+      tryBuildSlots();
+    }
+
+    // ===== 시간 슬롯 생성 =====
+    async function tryBuildSlots(){
+      selectedSlots = [];
+      $('slots').innerHTML = '';
+      show($('slotsWrap'), false);
+
+      const date = $('dateInput').value;
+      if(!selectedRoomId || !date) return;
+
+      const today = todayLocalYMD();
+      // 과거 날짜면 슬롯 전체 비활성 + 안내
+      if (cmpYMD(date, today) < 0) {
+        const grid = $('slots');
+        grid.innerHTML = '';
+        for(let h=9; h<18; h++){
+          const div = document.createElement('div');
+          div.className = 'slot disabled';
+          div.innerHTML = `${String(h).padStart(2,'0')}:00 ~ ${String(h+1).padStart(2,'0')}:00<small>과거 날짜</small>`;
+          grid.appendChild(div);
+        }
+        show($('slotsWrap'), true);
+        return;
+      }
+
+      spin(true);
+      try{
+        // 해당 일자 해당 강의실 예약 조회
+        const { data: rows, error } = await supabase
+          .from('reservations')
+          .select('start_time,end_time,status')
+          .eq('classroom_id', selectedRoomId)
+          .eq('reservation_date', date)
+          .eq('status', 'confirmed');
+
+        if(error) throw error;
+
+        const grid = $('slots');
+
+        // 오늘 여부 & 현재 시각(초)
+        const isToday = (date === today);
+        const now = new Date();
+        const nowSec = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+
+        for(let h=9; h<18; h++){
+          const start = `${String(h).padStart(2,'0')}:00:00`;
+          const end   = `${String(h+1).padStart(2,'0')}:00:00`;
+
+          // 기존 예약 겹침 여부
+          const overlap = (rows||[]).some(r => start < r.end_time && end > r.start_time);
+
+          // 과거 시간대(오늘일 때만): end <= now → 비활성
+          const pastTime = isToday && (hmsToSeconds(end) <= nowSec);
+
+          const div = document.createElement('div');
+          div.className = 'slot'
+            + (overlap ? ' reserved' : '')
+            + (pastTime ? ' disabled' : '');
+          div.dataset.start = start;
+          div.dataset.end = end;
+
+          let status = '선택 가능';
+          if (overlap) status = '예약 불가';
+          else if (pastTime) status = '시간 경과';
+
+          div.innerHTML = `${String(h).padStart(2,'0')}:00 ~ ${String(h+1).padStart(2,'0')}:00`
+                        + `<small>${status}</small>`;
+
+          if(!overlap && !pastTime){
+            div.addEventListener('click', ()=>{
+              div.classList.toggle('selected');
+              if(div.classList.contains('selected')){
+                selectedSlots.push({start, end});
+              }else{
+                selectedSlots = selectedSlots.filter(s=> s.start !== start);
+              }
+              selectedSlots.sort((a,b)=> a.start.localeCompare(b.start));
+            });
+          }
+
+          grid.appendChild(div);
+        }
+
+        show($('slotsWrap'), true);
+      }catch(e){
+        console.error(e);
+        notify('시간 정보를 불러올 수 없습니다.', 'error');
+      }finally{
+        spin(false);
+      }
+    }
+
+    // ===== 제출 =====
+    async function submitReservation(){
+      if(!currentUser){ location.href = 'index.html'; return; }
+      if(!selectedRoomId){ notify('강의실을 선택해주세요.','error'); return; }
+      const date = $('dateInput').value;
+      if(!date){ notify('날짜를 선택해주세요.','error'); return; }
+
+      // 최종 방어: 과거 날짜 차단
+      if (cmpYMD(date, todayLocalYMD()) < 0) {
+        notify('과거 날짜는 예약할 수 없습니다.', 'error');
+        return;
+      }
+
+      if(selectedSlots.length === 0){ notify('최소 1개의 시간대를 선택해주세요.','error'); return; }
+
+      const consecutive = isConsecutive(selectedSlots);
+      if(!consecutive){
+        const ok = confirm('선택한 시간대가 연속되지 않습니다. 각각 별도 예약으로 진행할까요?');
+        if(!ok) return;
+      }
+
+      const blocks = mergeBlocks(selectedSlots);
+      const purpose = $('purpose').value.trim() || null;
+
+      spin(true);
+      try{
+        // 각 블록별로 중복 재검증 후 삽입
+        for(const b of blocks){
+          const { data: overlaps, error: ovErr } = await supabase
+            .from('reservations')
+            .select('id')
+            .eq('classroom_id', selectedRoomId)
+            .eq('reservation_date', date)
+            .eq('status', 'confirmed')
+            .or(`and(start_time.lt.${b.end},end_time.gt.${b.start})`);
+
+          if(ovErr) throw ovErr;
+          if(overlaps && overlaps.length){
+            notify('선택하신 시간 중 다른 예약과 겹칩니다. 다시 선택해주세요.','error');
+            spin(false);
+            return;
+          }
+
+          const payload = {
+            classroom_id: selectedRoomId,
+            user_id: currentUser.id,
+            reservation_date: date,
+            start_time: b.start,
+            end_time: b.end,
+            purpose,
+            status: 'confirmed'
+          };
+
+          const { error } = await supabase.from('reservations').insert(payload);
+          if(error) throw error;
+        }
+
+        notify('예약이 완료되었습니다!', 'success');
+        setTimeout(()=> location.href = 'reserve-list.html', 1200);
+      }catch(e){
+        console.error(e);
+        notify('예약 중 오류가 발생했습니다. 다시 시도해주세요.', 'error');
+      }finally{
+        spin(false);
+      }
+    }
+
+    // ===== 초기화 =====
+    function resetForm(){
+      const today = todayLocalYMD();
+      $('roomSelect').value = '';
+      $('dateInput').min = today;
+      $('dateInput').value = today; // 과거 날짜로 초기화 방지
+      $('purpose').value = '';
+      selectedRoomId = null;
+      selectedSlots = [];
+      document.querySelectorAll('.room.selected').forEach(el=> el.classList.remove('selected'));
+      $('slots').innerHTML = '';
+      show($('slotsWrap'), false);
+    }
+
+    // ===== 로그아웃 =====
+    async function handleLogout(){
+      if(!confirm('로그아웃 하시겠습니까?')) return;
+      try{
+        const { error } = await supabase.auth.signOut();
+        if(error) throw error;
+        alert('로그아웃 되었습니다.');
+        location.href = 'index.html';
+      }catch(e){
+        alert('로그아웃 실패: ' + e.message);
+      }
+    }
+    window.handleLogout = handleLogout;
+  </script>
+</body>
+</html>

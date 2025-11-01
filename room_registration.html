@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>강의실 생성</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  /* ===== Base ===== */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+    background: #f8f9fa;
+  }
+
+  /* ===== 네비게이션 바 ===== */
+  .navbar {
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+
+  .navbar-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a1a1a;
+    text-decoration: none;
+    transition: opacity 0.3s;
+  }
+
+  .logo:hover {
+    opacity: 0.8;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+  }
+
+  .nav-menu {
+    display: flex;
+    gap: 8px;
+    list-style: none;
+  }
+
+  .nav-item {
+    position: relative;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    color: #4a5568;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .nav-link:hover {
+    background: #f7fafc;
+    color: #667eea;
+  }
+
+  .nav-link.active {
+    color: #667eea;
+    background: #eef2ff;
+  }
+
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background: #667eea;
+    transform: scaleX(0);
+    transition: transform 0.3s;
+  }
+
+  .nav-link.active::after {
+    transform: scaleX(1);
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* 프로필 드롭다운 */
+  .profile-container {
+    position: relative;
+    margin-left: 16px;
+  }
+
+  .profile-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px 6px 6px;
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .profile-button:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+  }
+
+  .profile-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .profile-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #2d3748;
+  }
+
+  .dropdown-icon {
+    width: 16px;
+    height: 16px;
+    color: #718096;
+    transition: transform 0.3s;
+  }
+
+  .profile-button.active .dropdown-icon {
+    transform: rotate(180deg);
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s;
+    z-index: 1000;
+  }
+
+  .dropdown-menu.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .dropdown-header {
+    padding: 16px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .dropdown-user-name {
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+  }
+
+  .dropdown-user-email {
+    font-size: 13px;
+    color: #718096;
+  }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: #4a5568;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-size: 14px;
+  }
+
+  .dropdown-item:hover {
+    background: #f7fafc;
+    color: #667eea;
+  }
+
+  .dropdown-item.logout {
+    color: #e53e3e;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .dropdown-item.logout:hover {
+    background: #fff5f5;
+    color: #c53030;
+  }
+
+  .dropdown-item svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* 로딩 스피너 */
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .dropdown-item.loading {
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  /* ===== 메인 콘텐츠 ===== */
+  .main-content { 
+    max-width: 1200px; 
+    margin: 40px auto; 
+    padding: 0 24px; 
+  }
+
+  .hero-section {
+    background: #fff; 
+    border-radius: 16px; 
+    padding: 40px 28px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .hero-title {
+    font-size: 28px; 
+    font-weight: 700; 
+    color: #1a1a1a; 
+    text-align: center; 
+    margin-bottom: 24px;
+  }
+
+  .hero-subtitle {
+    font-size: 15px; 
+    color: #718096; 
+    text-align: center; 
+    margin-bottom: 28px;
+  }
+
+  /* ===== Form Card ===== */
+  .form-card {
+    max-width: 520px; 
+    margin: 0 auto;
+    background: #ffffff;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.06);
+  }
+
+  .form-row { 
+    margin-bottom: 14px; 
+  }
+
+  .form-label {
+    display: block; 
+    margin-bottom: 6px; 
+    font-size: 14px; 
+    color: #2d3748; 
+    font-weight: 600;
+  }
+
+  .form-input, .form-number, .form-select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 15px;
+    color: #2d3748;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  .form-input:focus, .form-number:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+  }
+
+  /* 체크박스 그룹 */
+  .equip-group {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+    background: #fafbff;
+  }
+
+  .equip-title { 
+    font-size: 13px; 
+    color: #718096; 
+    margin-bottom: 8px; 
+  }
+
+  .equip-row { 
+    display: flex; 
+    gap: 16px; 
+    flex-wrap: wrap; 
+  }
+
+  .equip-check {
+    display: inline-flex; 
+    align-items: center; 
+    gap: 8px; 
+    font-size: 14px; 
+    color: #2d3748;
+    cursor: pointer;
+  }
+
+  .equip-check input[type="checkbox"] {
+    cursor: pointer;
+  }
+
+  /* 버튼 */
+  .cta-button {
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white; 
+    padding: 14px 18px; 
+    border-radius: 10px;
+    text-decoration: none; 
+    font-weight: 700; 
+    font-size: 16px;
+    border: none; 
+    cursor: pointer; 
+    width: 100%;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .cta-button:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 8px 20px rgba(102,126,234,0.4); 
+  }
+
+  .cta-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .help {
+    font-size: 12px; 
+    color: #a0aec0; 
+    margin-top: 4px;
+  }
+
+  /* 모바일 반응형 */
+  @media (max-width: 768px) {
+    .navbar-container {
+      padding: 0 16px;
+    }
+
+    .nav-menu {
+      gap: 4px;
+    }
+
+    .nav-link {
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+
+    .logo {
+      font-size: 18px;
+    }
+
+    .profile-name {
+      display: none;
+    }
+
+    .profile-button {
+      padding: 6px;
+    }
+
+    .hero-section { 
+      padding: 28px 18px; 
+    }
+
+    .hero-title { 
+      font-size: 24px; 
+    }
+
+    .form-card { 
+      padding: 18px; 
+    }
+  }
+</style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="mainAdmin.html" class="logo">
+        <div class="logo-icon">C</div>
+        <span>CNU 강의실 예약</span>
+      </a>
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <a href="mainAdmin.html" class="nav-link">
+            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            </svg>
+            홈
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="room_registration.html" class="nav-link active">
+            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            강의실 등록
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="statistics.html" class="nav-link">
+            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            강의실 통계
+          </a>
+        </li>
+      </ul>
+      <div class="profile-container">
+        <button class="profile-button" id="profileButton">
+          <div class="profile-avatar" id="profileAvatar">홍</div>
+          <span class="profile-name" id="profileName">홍길동</span>
+          <svg class="dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        <div class="dropdown-menu" id="dropdownMenu">
+          <div class="dropdown-header">
+            <div class="dropdown-user-name" id="dropdownUserName">홍길동</div>
+            <div class="dropdown-user-email" id="dropdownUserEmail">hong@example.com</div>
+          </div>
+          <button class="dropdown-item" onclick="alert('내 정보 페이지로 이동')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+            내 정보
+          </button>
+          <button class="dropdown-item" onclick="alert('설정 페이지로 이동')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            설정
+          </button>
+          <button class="dropdown-item logout" id="logoutButton" onclick="handleLogout()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            <span id="logoutText">로그아웃</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <section class="hero-section">
+      <h1 class="hero-title">강의실 생성</h1>
+      <p class="hero-subtitle">관리자가 새로운 강의실 정보를 등록합니다.</p>
+
+      <div class="form-card">
+        <form id="roomForm" novalidate>
+          <div class="form-row">
+            <label for="roomName" class="form-label">강의실 이름</label>
+            <input type="text" id="roomName" class="form-input" placeholder="예: 401호" required />
+          </div>
+
+          <div class="form-row">
+            <label for="building" class="form-label">건물명</label>
+            <input type="text" id="building" class="form-input" placeholder="예: 공과대학 5호관" required />
+          </div>
+
+          <div class="form-row">
+            <label for="capacity" class="form-label">수용인원</label>
+            <input
+              type="number"
+              id="capacity"
+              class="form-number"
+              inputmode="numeric"
+              min="1"
+              placeholder="수용 가능 인원(정수)"
+              required
+            />
+            <div class="help">수용인원은 1 이상 권장</div>
+          </div>
+
+          <div class="form-row">
+            <div class="equip-group">
+              <div class="equip-title">시설 정보 (다중 선택 가능)</div>
+              <div class="equip-row">
+                <label class="equip-check">
+                  <input type="checkbox" id="equip_projector" /> 빔프로젝터
+                </label>
+                <label class="equip-check">
+                  <input type="checkbox" id="equip_whiteboard" /> 화이트보드
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <button type="submit" class="cta-button" id="submitBtn">
+              <span id="btnText">강의실 생성</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Supabase 설정
+    const SUPABASE_URL = 'https://bawmwecykdaqsjklyjhb.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhd213ZWN5a2RhcXNqa2x5amhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5NjgxNzQsImV4cCI6MjA3NzU0NDE3NH0.KtTxYldOR_VCjUvI5BiAGBENkqHFRmApWM67PdKbGYQ';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ===== 사용자 인증 확인 =====
+    async function checkUser() {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (error || !user) {
+          window.location.href = 'index.html';
+          return;
+        }
+
+        await updateUserUI(user);
+      } catch (error) {
+        console.error('사용자 확인 오류:', error);
+        window.location.href = 'index.html';
+      }
+    }
+
+    // ===== 사용자 정보 UI 업데이트 =====
+    async function updateUserUI(user) {
+      try {
+        // profiles 테이블에서 사용자 정보 가져오기
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        const email = user.email || '';
+        const username = profile?.username || user.user_metadata?.username || email.split('@')[0];
+        const avatar = username.charAt(0).toUpperCase();
+
+        document.getElementById('profileAvatar').textContent = avatar;
+        document.getElementById('profileName').textContent = username;
+        document.getElementById('dropdownUserName').textContent = username;
+        document.getElementById('dropdownUserEmail').textContent = email;
+      } catch (error) {
+        console.error('프로필 정보 로드 오류:', error);
+      }
+    }
+
+    // ===== 로그아웃 함수 =====
+    async function handleLogout() {
+      if (!confirm('로그아웃 하시겠습니까?')) {
+        return;
+      }
+
+      const logoutButton = document.getElementById('logoutButton');
+      const logoutText = document.getElementById('logoutText');
+      
+      try {
+        logoutButton.classList.add('loading');
+        logoutButton.disabled = true;
+        logoutText.innerHTML = '<span class="spinner"></span>로그아웃 중...';
+
+        const { error } = await supabase.auth.signOut();
+
+        if (error) {
+          throw error;
+        }
+
+        alert('로그아웃 되었습니다.');
+        window.location.href = 'index.html';
+        
+      } catch (error) {
+        console.error('로그아웃 오류:', error);
+        alert('로그아웃 중 오류가 발생했습니다: ' + error.message);
+        
+        logoutButton.classList.remove('loading');
+        logoutButton.disabled = false;
+        logoutText.textContent = '로그아웃';
+      }
+    }
+
+    // ===== 프로필 드롭다운 관리 =====
+    const profileButton = document.getElementById('profileButton');
+    const dropdownMenu = document.getElementById('dropdownMenu');
+
+    if (profileButton && dropdownMenu) {
+      profileButton.addEventListener('click', function(e) {
+        e.stopPropagation();
+        profileButton.classList.toggle('active');
+        dropdownMenu.classList.toggle('active');
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!profileButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+          profileButton.classList.remove('active');
+          dropdownMenu.classList.remove('active');
+        }
+      });
+    }
+
+    // ===== 강의실 생성 폼 처리 =====
+    document.getElementById("roomForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById('submitBtn');
+      const btnText = document.getElementById('btnText');
+
+      // 폼 데이터 수집
+      const name = document.getElementById("roomName").value.trim();
+      const building = document.getElementById("building").value.trim();
+      const capacityRaw = document.getElementById("capacity").value.trim();
+      const capacity = Number(capacityRaw);
+
+      // 필수 입력 확인
+      if (!name || !building || !capacityRaw) {
+        alert("모든 필수 정보를 입력해주세요.");
+        return;
+      }
+
+      // 수용인원 검증
+      if (!Number.isFinite(capacity) || capacity < 1) {
+        alert("수용인원은 1 이상의 숫자로 입력해주세요.");
+        return;
+      }
+
+      // 시설 정보 수집
+      const facilities = [];
+      if (document.getElementById("equip_projector").checked) facilities.push("빔프로젝터");
+      if (document.getElementById("equip_whiteboard").checked) facilities.push("화이트보드");
+
+      // 로딩 상태 표시
+      submitBtn.disabled = true;
+      btnText.innerHTML = '<span class="spinner"></span> 저장 중...';
+
+      try {
+        // Supabase classrooms 테이블에 데이터 저장
+        const { data, error } = await supabase
+          .from('classrooms')
+          .insert([
+            {
+              name: name,
+              building: building,
+              capacity: capacity,
+              facilities: facilities.length > 0 ? facilities : null,
+              is_active: true
+            }
+          ])
+          .select();
+
+        if (error) {
+          // 중복 이름 에러 처리
+          if (error.code === '23505') {
+            throw new Error('이미 존재하는 강의실 이름입니다.');
+          }
+          throw error;
+        }
+
+        // 성공 메시지
+        const facilityText = facilities.length > 0 ? facilities.join(', ') : '없음';
+        alert(
+          `강의실이 성공적으로 등록되었습니다!\n\n` +
+          `강의실: ${name}\n` +
+          `건물: ${building}\n` +
+          `수용인원: ${capacity}명\n` +
+          `시설: ${facilityText}`
+        );
+
+        // 폼 초기화
+        this.reset();
+        
+        // 관리자 메인 페이지로 이동
+        window.location.href = "mainAdmin.html";
+
+      } catch (error) {
+        console.error('강의실 등록 오류:', error);
+        alert('강의실 등록 중 오류가 발생했습니다:\n' + error.message);
+      } finally {
+        // 로딩 상태 해제
+        submitBtn.disabled = false;
+        btnText.textContent = '강의실 생성';
+      }
+    });
+
+    // ===== 페이지 로드 시 사용자 확인 =====
+    checkUser();
+  </script>
+</body>
+</html>

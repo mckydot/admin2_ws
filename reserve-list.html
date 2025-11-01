@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>예약 조회/취소 - CNU 강의실 예약</title>
+  <style>
+    /* ===== 네비게이션(기존 디자인) ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI','Noto Sans KR', sans-serif; background:#f8f9fa; color:#1a1a1a; }
+    .navbar { background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.06); position:sticky; top:0; z-index:10; }
+    .navbar-container { max-width:1200px; margin:0 auto; padding:0 24px; display:flex; justify-content:space-between; align-items:center; height:70px; }
+    .logo { display:flex; align-items:center; gap:12px; text-decoration:none; color:#1a1a1a; font-weight:700; }
+    .logo-icon { width:36px; height:36px; border-radius:8px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); }
+    .nav-menu { list-style:none; display:flex; gap:8px; }
+    .nav-link { display:flex; align-items:center; gap:8px; text-decoration:none; color:#4a5568; padding:10px 16px; border-radius:8px; }
+    .nav-link.active, .nav-link:hover { background:#eef2ff; color:#667eea; }
+    .nav-item.has-submenu{ position:relative; }
+    .nav-submenu{
+      position:absolute; top: calc(100% + 8px); left:0;
+      background:#fff; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.12);
+      min-width:200px; padding:8px; list-style:none;
+      opacity:0; visibility:hidden; transform:translateY(-6px); transition:all .25s; z-index:1000;
+    }
+    .nav-item.has-submenu:hover .nav-submenu,
+    .nav-item.has-submenu:focus-within .nav-submenu { opacity:1; visibility:visible; transform:translateY(0); }
+    .nav-submenu a{ display:block; padding:10px 12px; border-radius:8px; text-decoration:none; color:#4a5568; font-size:14px; }
+    .nav-submenu a:hover{ background:#f7fafc; color:#667eea; }
+
+    .profile-container{ position:relative; }
+    .profile-button{ display:flex; align-items:center; gap:8px; background:#f7fafc; border:1px solid #e2e8f0; border-radius:30px; padding:6px 10px; cursor:pointer; }
+    .profile-avatar{ width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; display:grid; place-items:center; font-weight:800; }
+    .dropdown-menu{ position:absolute; right:0; top:calc(100% + 8px); background:#fff; border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.12); display:none; min-width:200px; }
+    .dropdown-menu.active{ display:block; }
+    .dropdown-header{ padding:12px; border-bottom:1px solid #e2e8f0; }
+    .dropdown-item{ display:block; width:100%; text-align:left; padding:10px 12px; background:none; border:none; cursor:pointer; }
+    .dropdown-item.logout{ color:#e53e3e; border-top:1px solid #e2e8f0; }
+
+    /* ===== 페이지 공통 ===== */
+    .container{ max-width:1100px; margin:24px auto; padding:0 20px }
+    .card{ background:#fff; border:1px solid #edf2f7; border-radius:16px; box-shadow:0 6px 24px rgba(0,0,0,.06); padding:20px }
+    .title{ font-size:24px; font-weight:800; margin-bottom:6px }
+    .sub{ color:#718096; margin-bottom:18px }
+
+    .toolbar{ display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; margin-bottom:14px }
+    @media(max-width:840px){ .toolbar{ grid-template-columns:1fr; } }
+    .input,.select{ width:100%; padding:12px 14px; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; background:#fff }
+    .input:focus,.select:focus{ outline:none; border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.12) }
+
+    .list{ display:grid; gap:12px; }
+    .item{ border:1px solid #e2e8f0; border-radius:14px; padding:16px; display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; background:#fff }
+    .item.cancelled{ opacity:.6; }
+    .item-head{ display:flex; flex-wrap:wrap; gap:8px; align-items:center }
+    .name{ font-weight:800; font-size:18px }
+    .meta{ color:#718096; font-size:14px }
+    .badges{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px }
+    .badge{ font-size:12px; padding:6px 10px; border-radius:999px; background:#eef2ff; color:#4c51bf; border:1px solid #c3d1ff; font-weight:700 }
+    .badge.success{ background:#c6f6d5; color:#22543d; border-color:#9ae6b4 }
+    .badge.error{ background:#fed7d7; color:#742a2a; border-color:#feb2b2 }
+    .purpose{ margin-top:6px; font-size:13px; color:#4a5568 }
+
+    .actions{ display:flex; gap:8px }
+    .btn{ border:none; border-radius:10px; padding:10px 14px; font-weight:800; cursor:pointer; font-size:14px }
+    .btn-outline{ background:#fff; color:#667eea; border:2px solid #667eea }
+    .btn-danger{ background:#e53e3e; color:#fff }
+    .btn[disabled]{ opacity:.5; cursor:not-allowed }
+
+    .empty{ text-align:center; color:#718096; padding:40px 10px }
+    .alert{ display:none; margin-bottom:14px; padding:12px 14px; border-radius:10px }
+    .alert.show{ display:block }
+    .alert.info{ background:#bee3f8; color:#2c5282; border-left:4px solid #3182ce }
+    .alert.success{ background:#c6f6d5; color:#22543d; border-left:4px solid #38a169 }
+    .alert.error{ background:#fed7d7; color:#742a2a; border-left:4px solid #e53e3e }
+
+    .dim{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:50 }
+    .dim.show{ display:flex }
+    .spinner{ width:46px; height:46px; border:4px solid #e2e8f0; border-top-color:#667eea; border-radius:50%; animation:spin .8s linear infinite }
+    @keyframes spin{ to{ transform:rotate(360deg) } }
+  </style>
+</head>
+<body>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- 네비게이션 -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">C</div><span>CNU 강의실 예약</span>
+      </a>
+      <ul class="nav-menu">
+        <li class="nav-item"><a href="index.html" class="nav-link">홈</a></li>
+        <li class="nav-item has-submenu">
+          <a href="reservation.html" class="nav-link" aria-haspopup="true" aria-expanded="false">강의실 예약</a>
+          <ul class="nav-submenu" aria-label="강의실 예약 메뉴">
+            <li><a href="register.html" id="reserve-create">예약하기</a></li>
+            <li><a href="reserve-list.html" id="reserve-list" class="active">조회 및 취소</a></li>
+          </ul>
+        </li>
+        <li class="nav-item"><a href="empty-rooms.html" class="nav-link" id="empty-rooms">빈 강의실 조회</a></li>
+      </ul>
+
+      <div class="profile-container">
+        <button class="profile-button" id="profileButton">
+          <div class="profile-avatar" id="profileAvatar">홍</div><span class="profile-name" id="profileName">홍길동</span>
+          <svg class="dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        <div class="dropdown-menu" id="dropdownMenu">
+          <div class="dropdown-header">
+            <div class="dropdown-user-name" id="dropdownUserName">홍길동</div>
+            <div class="dropdown-user-email" id="dropdownUserEmail">hong@example.com</div>
+          </div>
+          <button class="dropdown-item" onclick="alert('내 정보 페이지로 이동')">내 정보</button>
+          <button class="dropdown-item" onclick="alert('설정 페이지로 이동')">설정</button>
+          <button class="dropdown-item logout" id="logoutButton" onclick="handleLogout()">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 본문 -->
+  <div class="container">
+    <div class="card">
+      <div class="title">내 예약 목록</div>
+      <div class="sub">예약 상태를 확인하고, 필요 시 취소할 수 있습니다.</div>
+
+      <div id="alert" class="alert"></div>
+
+      <!-- 툴바: 검색 + 보기 + 상태 -->
+      <div class="toolbar">
+        <input id="search" class="input" placeholder="건물/강의실/목적 검색" />
+        <select id="viewFilter" class="select">
+          <option value="upcoming" selected>다가오는 예약</option>
+          <option value="all">전체</option>
+          <option value="past">지난 예약</option>
+        </select>
+        <select id="statusFilter" class="select">
+          <option value="all" selected>상태: 전체</option>
+          <option value="confirmed">확정</option>
+          <option value="cancelled">취소됨</option>
+        </select>
+      </div>
+
+      <!-- 리스트 -->
+      <div id="list" class="list"></div>
+
+      <div id="empty" class="empty" style="display:none;">
+        예약이 없습니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- 로딩 -->
+  <div id="loading" class="dim"><div class="spinner"></div></div>
+
+  <script>
+    // ===== Supabase 설정 =====
+    const SUPABASE_URL = 'https://bawmwecykdaqsjklyjhb.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhd213ZWN5a2RhcXNqa2x5amhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5NjgxNzQsImV4cCI6MjA3NzU0NDE3NH0.KtTxYldOR_VCjUvI5BiAGBENkqHFRmApWM67PdKbGYQ';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ===== 상태 =====
+    let currentUser = null;
+    let rawReservations = []; // API 원본
+    let filtered = [];        // 화면 표시용
+
+    // ===== 유틸 =====
+    const $ = (id)=> document.getElementById(id);
+    const loading = $('loading');
+    const spin = (v)=> loading.classList.toggle('show', !!v);
+    const alertBox = $('alert');
+    function notify(msg, type='info'){
+      alertBox.textContent = msg;
+      alertBox.className = `alert ${type} show`;
+      setTimeout(()=> alertBox.className = 'alert', 4000);
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+    function todayLocalYMD(){
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const dd= String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${dd}`;
+    }
+    function nowSec(){
+      const d = new Date();
+      return d.getHours()*3600 + d.getMinutes()*60 + d.getSeconds();
+    }
+    function hmsToSec(hms){
+      const [h,m,s] = hms.split(':').map(Number);
+      return h*3600 + m*60 + (s||0);
+    }
+    function cmpYMD(a,b){ return a===b?0:(a<b?-1:1); }
+    function fmtTime(hms){ return hms.slice(0,5); } // "HH:MM:SS" -> "HH:MM"
+    function canCancel(r){
+      // 취소는 '확정'이고 아직 시작 전(오늘이면 현재시각 이전이면 불가)
+      if(r.status !== 'confirmed') return false;
+      const t = todayLocalYMD();
+      if (cmpYMD(r.reservation_date, t) > 0) return true; // 미래 날짜
+      if (cmpYMD(r.reservation_date, t) < 0) return false; // 과거 날짜
+      // 오늘: 시작시간이 현재보다 뒤여야 취소 가능
+      return hmsToSec(r.start_time) > nowSec();
+    }
+
+    // ===== 초기화 =====
+    document.addEventListener('DOMContentLoaded', init);
+
+    async function init(){
+      try{
+        spin(true);
+
+        // 프로필 드롭다운
+        const profileButton = $('profileButton');
+        const dropdownMenu  = $('dropdownMenu');
+        if (profileButton && dropdownMenu) {
+          profileButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('active');
+            profileButton.classList.toggle('active');
+          });
+          document.addEventListener('click', (e) => {
+            if (!profileButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+              dropdownMenu.classList.remove('active');
+              profileButton.classList.remove('active');
+            }
+          });
+        }
+
+        // 로그인 확인
+        const { data: { user }, error: authErr } = await supabase.auth.getUser();
+        if(authErr) throw authErr;
+        if(!user){ location.href='index.html'; return; }
+        currentUser = user;
+
+        // 프로필 표시
+        try{
+          const email = user.email || '';
+          const username = user.user_metadata?.username || email.split('@')[0] || '사용자';
+          $('profileAvatar').textContent = username.charAt(0).toUpperCase();
+          $('profileName').textContent = username;
+          $('dropdownUserName').textContent = username;
+          $('dropdownUserEmail').textContent = email;
+        }catch{}
+
+        // 데이터 로드
+        await loadReservations();
+
+        // 이벤트 바인딩
+        $('search').addEventListener('input', applyFilters);
+        $('viewFilter').addEventListener('change', applyFilters);
+        $('statusFilter').addEventListener('change', applyFilters);
+
+        // (선택) 실시간 반영 — 취소/생성 등 변화 구독
+        supabase
+          .channel('reservations-changes')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'reservations', filter: `user_id=eq.${currentUser.id}` },
+            async () => { await loadReservations(); }
+          )
+          .subscribe();
+      }catch(e){
+        console.error(e);
+        notify('초기화 중 오류가 발생했습니다.', 'error');
+      }finally{
+        spin(false);
+      }
+    }
+
+    // ===== 데이터 로드 =====
+    async function loadReservations(){
+      spin(true);
+      try{
+        // 예약 + classroom 정보 함께 조회 (FK join)
+        const { data, error } = await supabase
+          .from('reservations')
+          .select(`
+            id, classroom_id, user_id, reservation_date, start_time, end_time, purpose, status,
+            classrooms:classroom_id ( name, building, capacity )
+          `)
+          .eq('user_id', currentUser.id)
+          .order('reservation_date', { ascending: false })
+          .order('start_time', { ascending: false });
+
+        if(error) throw error;
+
+        rawReservations = (data || []).map(r => ({
+          ...r,
+          classroom_name: r.classrooms?.name || '',
+          building: r.classrooms?.building || '',
+          capacity: r.classrooms?.capacity || null
+        }));
+
+        applyFilters();
+      }catch(e){
+        console.error(e);
+        // RLS/권한 이슈 안내
+        if (String(e.message || '').toLowerCase().includes('permission')) {
+          notify('예약을 불러올 권한이 없습니다. (RLS 정책 확인 필요)', 'error');
+        } else {
+          notify('예약 목록을 불러오지 못했습니다.', 'error');
+        }
+      }finally{
+        spin(false);
+      }
+    }
+
+    // ===== 필터/검색 적용 & 렌더 =====
+    function applyFilters(){
+      const q = $('search').value.trim().toLowerCase();
+      const view = $('viewFilter').value;     // upcoming / all / past
+      const stat = $('statusFilter').value;   // all / confirmed / cancelled
+      const today = todayLocalYMD();
+
+      filtered = rawReservations.filter(r => {
+        // 검색: 건물/강의실/목적
+        const hay = `${r.building} ${r.classroom_name} ${r.purpose||''}`.toLowerCase();
+        if(q && !hay.includes(q)) return false;
+
+        // 상태 필터
+        if(stat !== 'all' && r.status !== stat) return false;
+
+        // 뷰 필터
+        const cmp = cmpYMD(r.reservation_date, today);
+        if(view === 'upcoming'){
+          if(cmp > 0) return true;            // 미래
+          if(cmp < 0) return false;           // 과거
+          // 오늘: 종료시간이 현재보다 뒤면 다가오는 것으로 간주
+          return hmsToSec(r.end_time) > nowSec();
+        }else if(view === 'past'){
+          if(cmp < 0) return true;            // 과거
+          if(cmp > 0) return false;           // 미래
+          // 오늘: 종료시간이 현재보다 같거나 이전이면 지난 예약
+          return hmsToSec(r.end_time) <= nowSec();
+        }
+        return true; // all login
+      });
+
+      renderList();
+    }
+
+    function renderList(){
+      const box = $('list');
+      const empty = $('empty');
+      box.innerHTML = '';
+      if(!filtered.length){
+        empty.style.display = '';
+        return;
+      }
+      empty.style.display = 'none';
+
+      filtered.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'item' + (r.status === 'cancelled' ? ' cancelled' : '');
+
+        const left = document.createElement('div');
+        const right = document.createElement('div');
+        right.className = 'actions';
+
+        // Left content
+        left.innerHTML = `
+          <div class="item-head">
+            <div class="name">${r.building} ${r.classroom_name}</div>
+            <div class="meta">${r.reservation_date} · ${fmtTime(r.start_time)} ~ ${fmtTime(r.end_time)} ${r.capacity? `· ${r.capacity}명` : ''}</div>
+          </div>
+          <div class="badges">
+            <span class="badge ${r.status==='confirmed'?'success':'error'}">${r.status==='confirmed'?'확정':'취소됨'}</span>
+          </div>
+          ${r.purpose ? `<div class="purpose">목적: ${r.purpose}</div>` : ''}
+        `;
+
+        // Right actions
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-danger';
+        cancelBtn.textContent = '예약 취소';
+        cancelBtn.disabled = !canCancel(r);
+        cancelBtn.addEventListener('click', () => onCancel(r));
+
+        right.appendChild(cancelBtn);
+
+        item.appendChild(left);
+        item.appendChild(right);
+        box.appendChild(item);
+      });
+    }
+
+    // ===== 취소 =====
+    async function onCancel(r){
+      const msg = `${r.reservation_date} ${fmtTime(r.start_time)}~${fmtTime(r.end_time)}\n${r.building} ${r.classroom_name}\n예약을 취소하시겠습니까?`;
+      if(!confirm(msg)) return;
+
+      // 이미 시작했거나 과거면 방어
+      if(!canCancel(r)){ notify('이미 시작했거나 과거 예약은 취소할 수 없습니다.', 'error'); return; }
+
+      spin(true);
+      try{
+        // status='cancelled' 로 소프트 취소 (Exclusion 제약은 status='confirmed'에만 적용 → 충돌 없음)
+        const { error } = await supabase
+          .from('reservations')
+          .update({ status: 'cancelled' })
+          .eq('id', r.id)
+          .eq('user_id', currentUser.id);
+
+        if(error) throw error;
+
+        notify('예약이 취소되었습니다.', 'success');
+
+        // 로컬 상태 갱신 & 재적용
+        const idx = rawReservations.findIndex(x => x.id === r.id);
+        if(idx >= 0) rawReservations[idx].status = 'cancelled';
+        applyFilters();
+      }catch(e){
+        console.error(e);
+        if (String(e.code) === '42501') {
+          notify('취소 권한이 없습니다. (RLS 정책 확인 필요)', 'error');
+        } else {
+          notify('예약 취소 중 오류가 발생했습니다.', 'error');
+        }
+      }finally{
+        spin(false);
+      }
+    }
+
+    // ===== 로그아웃 =====
+    async function handleLogout(){
+      if(!confirm('로그아웃 하시겠습니까?')) return;
+      try{
+        const { error } = await supabase.auth.signOut();
+        if(error) throw error;
+        alert('로그아웃 되었습니다.');
+        location.href = 'index.html';
+      }catch(e){
+        alert('로그아웃 실패: ' + e.message);
+      }
+    }
+    window.handleLogout = handleLogout;
+  </script>
+</body>
+</html>
